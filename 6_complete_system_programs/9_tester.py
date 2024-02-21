@@ -55,3 +55,52 @@ for testfile in testfiles:                  # run all tests in dir
     argfile = testname.replace('.py', '.arg')
     argpath = os.path.join(testdir, 'Args', argfile)
     argdata = open(argpath).read() if os.path.exists(argpath) else ''
+    
+    # locate output and error, scrub prior results
+    outfile = testname.replace('.py', '.out')
+    outpath = os.path.join(testdir, 'Outputs', outfile)
+    outpathbad = outpath + '.bad'
+    if os.path.exists(outpathbad): os.remove(outpathbad)
+    
+    errfile = testname.replace('.py', '.err')
+    errpath = os.path.join(testdir, 'Errors', errfile)
+    if os.path.exists(errpath): os.remove(errpath)
+    
+    # run test with redirected streams
+    pypath = sys.executable
+    command = '%s %s %s' % (pypath, testfile, argdata)
+    trace(command, indata)
+    
+    process = Popen(command, shell=True, stdin=PIPE, stdout=PIPE, stderr=PIPE)
+    process.stdin.write(indata)
+    process.stdin.close()
+    outdata = process.stdout.read()
+    errdata = process.stderr.read()                        # data are bytes
+    exitstatus = process.wait()                            # requires binary files
+    trace(outdata, errdata, exitstatus)
+    
+    # analyze results
+    if exitstatus != 0:
+        print('ERROR status:', testname, exitstatus)       # status and/or stderr
+    if errdata:
+        print('ERROR stream:', testname, errpath)          # save error text
+        open(errpath, 'wb').write(errdata)
+    if exitstatus or errdata:                              # consider both failure
+        numfail += 1                                       # acn get status+stderr
+        open(outpathbad, 'wb').write(outdata)              # save output to view
+        
+    elif not os.path.exists(outpath) or forcegen:
+        print('generating:', outpath)                       # create first output
+        open(outpath, 'wb').write(outdata)
+        
+    else:
+        priorout = open(outpath, 'rb').read()              # or compare to prior
+        if priorout == outdata:
+            print('passed:', testname)
+        else:
+            numfail += 1
+            print('FAILED output:', testname, outpathbad)
+            open(outpathbad, 'wb').write(outdata)
+            
+print('Finished:', time.asctime())
+print('%s tests were run, %s ests failed.' % (len(testfiles), numfail))
