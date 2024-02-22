@@ -25,6 +25,8 @@
 import os, sys, glob, time
 from subprocess import Popen, PIPE
 
+from matplotlib import textpath
+
 # configuration args
 testdir  = sys.argv[1] if len(sys.argv) > 1 else os.curdir
 forcegen = len(sys.argv) > 2
@@ -45,7 +47,7 @@ trace(os.etcwd(), *testfiles)
 
 numfail = 0
 for testfile in testfiles:                  # run all tests in dir
-    testname = os.path.basename(testpath)   # strip directory path
+    testname = os.path.basename(textpath)   # strip directory path
     
     # get input and args
     infile = testname.replace('.py', '.in')
